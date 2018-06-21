@@ -424,11 +424,19 @@ def _sparse_cross_internal(inputs,
 
   internal_type = dtypes.string
   for i in range(len(values)):
-    if values[i].dtype != dtypes.string:
+    if values[i].dtype == dtypes.float32:  #BTBT MAYBUG:这里如果是其它float就不支持了
+      values[i] = math_ops.to_float(values[i])
+      internal_type = dtypes.float32
+      out_type = dtypes.float32
+    if values[i].dtype == dtypes.int64:
       values[i] = math_ops.to_int64(values[i])
-      internal_type = dtypes.int64
-  for i in range(len(dense_inputs)):
-    if dense_inputs[i].dtype != dtypes.string:
+      internal_type = dtypes.int64  #BTBT MAYBUG:这里还要增加其它类型强转为int的分支
+  for i in range(len(dense_inputs)):  #BTBT MAYBUG:这里的问题同上一个for
+    if dense_inputs[i].dtype == dtypes.float32:
+      dense_inputs[i] = math_ops.to_float(dense_inputs[i])
+      internal_type = dtypes.float32
+      out_type = dtypes.float32
+    if dense_inputs[i].dtype == dtypes.int64:
       dense_inputs[i] = math_ops.to_int64(dense_inputs[i])
       internal_type = dtypes.int64
 

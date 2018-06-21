@@ -262,10 +262,10 @@ REGISTER_OP("SparseCross")
     .Attr("hashed_output: bool")
     .Attr("num_buckets: int >= 0")
     .Attr("hash_key: int")
-    .Attr("sparse_types: list({int64, string}) >= 0")
-    .Attr("dense_types: list({int64, string}) >= 0")
-    .Attr("out_type: {int64, string}")
-    .Attr("internal_type: {int64, string}")
+    .Attr("sparse_types: list({int64, string, float}) >= 0")
+    .Attr("dense_types: list({int64, string, float}) >= 0")
+    .Attr("out_type: {int64, string, float}")
+    .Attr("internal_type: {int64, string, float}")
     .SetShapeFn([](shape_inference::InferenceContext* c) {
       c->set_output(0, c->Matrix(c->UnknownDim(), 2));
       c->set_output(1, c->Vector(c->UnknownDim()));

@@ -73,6 +73,13 @@ class SparseTensorColumn : public ColumnInterface<InternalType> {
   std::vector<int64> feature_start_indices_;
 };
 
+// InternalType is float use FloatCrosser.
+template <>
+float SparseTensorColumn<float>::Feature(int64 batch, int64 n) const {
+  const int64 start = feature_start_indices_[batch];
+  return values_.vec<float>().data()[start + n];
+}
+
 // InternalType is int64 only when using HashCrosser.
 template <>
 int64 SparseTensorColumn<int64>::Feature(int64 batch, int64 n) const {
@@ -134,6 +141,14 @@ StringPiece DenseTensorColumn<StringPiece>::Feature(int64 batch,
                                                     int64 n) const {
   return tensor_.matrix<string>()(batch, n);
 }
+
+//Internla type is float use FloatCrosser
+template <>
+float DenseTensorColumn<float>::Feature(int64 batch,
+                                                    int64 n) const {
+  return tensor_.matrix<float>()(batch, n);
+}
+
 
 // Updates Output tensors with sparse crosses.
 template <typename OutType>
@@ -220,6 +235,31 @@ class HashCrosser {
   const uint64 hash_key_;
 };
 
+//Generates the sparse crossers as multiple of float
+class FloatCrosser {
+  public:
+    FloatCrosser(const std::vector<std::unique_ptr<ColumnInterface<float>>>& columns,
+                const int64 num_buckets_unused,
+                const uint64 hash_key_unused)
+                :columns_(columns) {
+        (void)num_buckets_unused;
+        (void)hash_key_unused;
+      }
+
+    float Generate(const int64 batch_index,
+                    const std::vector<int>& permutation) const {
+        float result = 1.0;
+        for(int i = 0; i < permutation.size(); i++) {
+          result *= columns_[i]->Feature(batch_index, permutation[i]);
+        }
+        return result;
+      }
+
+  private:
+    const std::vector<std::unique_ptr<ColumnInterface<float>>>& columns_;
+};
+
+
 // ProductIterator generates cartesian products based on indices.
 template <typename InternalType>
 class ProductIterator {
@@ -283,6 +323,13 @@ struct CrossTraits<true, int64> {
   typedef HashCrosser Crosser;
   typedef OutputUpdater<int64> Updater;
 };
+
+template<>
+struct CrossTraits<false, float> {
+  typedef FloatCrosser Crosser;
+  typedef OutputUpdater Updater;
+};
+
 }  // namespace
 
 template <bool HASHED_OUTPUT, typename InternalType>

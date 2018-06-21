@@ -27741,6 +27741,7 @@ op {
       list {
         type: DT_INT64
         type: DT_STRING
+        type: DT_FLOAT
       }
     }
   }
@@ -27752,6 +27753,7 @@ op {
       list {
         type: DT_INT64
         type: DT_STRING
+        type: DT_FLOAT
       }
     }
   }
@@ -27762,6 +27764,7 @@ op {
       list {
         type: DT_INT64
         type: DT_STRING
+        type: DT_FLOAT
       }
     }
   }
@@ -27772,6 +27775,7 @@ op {
       list {
         type: DT_INT64
         type: DT_STRING
+        type: DT_FLOAT
       }
     }
   }
