@@ -327,7 +327,7 @@ struct CrossTraits<true, int64> {
 template<>
 struct CrossTraits<false, float> {
   typedef FloatCrosser Crosser;
-  typedef OutputUpdater Updater;
+  typedef OutputUpdater<float> Updater;
 };
 
 }  // namespace
