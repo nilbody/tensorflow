@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+#include <fstream>
 #include "tensorflow/core/distributed_runtime/rpc/grpc_tensor_coding.h"
 #include "grpc++/support/byte_buffer.h"
 #include "grpc++/support/slice.h"
@@ -25,6 +26,7 @@ limitations under the License.
 #include "tensorflow/core/lib/io/proto_encode_helper.h"
 #include "tensorflow/core/platform/env.h"
 #include "tensorflow/core/protobuf/worker.pb.h"
+#include "tensorflow/core/distributed_runtime/rpc/compression_helper.h"
 
 namespace tensorflow {
 namespace grpc {
@@ -149,6 +151,7 @@ void EncodeTensorToByteBuffer(bool is_dead, const Tensor& val,
 
     // Encode full protocol buffer to a ByteBuffer
     EncodeRecvTensorResponseToByteBuffer(response, result);
+    Compression(result);
   } else {
     // skeleton is the encoded TensorProto contents (dtype and shape), but
     // not the actual data
@@ -231,6 +234,7 @@ void EncodeTensorToByteBuffer(bool is_dead, const Tensor& val,
 
     ::grpc::ByteBuffer tmp(&slices[0], num_slices);
     result->Swap(&tmp);
+    Compression(result);
   }
 }
 

@@ -46,6 +46,7 @@ cc_library(
         "//tensorflow/core:lib",
         # Required to be able to overload TensorResponse parsing.
         "//tensorflow/core/distributed_runtime:tensor_coding",
+        ":compression_helper",
     ],
 )
 
@@ -119,6 +120,7 @@ cc_library(
         "//tensorflow/core:protos_all_cc",
         "//tensorflow/core:worker_proto_cc",
         "@grpc//:grpc++_unsecure",
+        ":compression_helper"
     ],
 )
 
@@ -528,4 +530,31 @@ cc_library(
         "//tensorflow/core/util/rpc:rpc_factory_registry",
     ],
     alwayslink = 1,
+)
+
+cc_library(
+    name = "lz4",
+    src = ["lz4frame.c",
+            "lz4.c",
+            "xxhash.c",
+    ],
+    hdrs = ["lz4.h",
+            "lz4frame_static.h",
+            "lz4frame.h",
+            "xxhash.h",
+            "lz4hc.h",
+    ],
+    copts = ["-DXXH_NAMESPACE=LZ4_",
+    ],
+)
+
+cc_library(
+    name = "compression_helper",
+    srcs = ["compression_helper.cc",
+    ],
+    hdrs = ["compression_helper.h",
+    ],
+    deps = [":lz4",
+            "@grpc//:grpc++_unsecure",
+    ],
 )

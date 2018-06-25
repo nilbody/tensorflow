@@ -15,6 +15,7 @@ limitations under the License.
 
 #include "tensorflow/core/distributed_runtime/rpc/grpc_util.h"
 #include "tensorflow/core/distributed_runtime/tensor_coding.h"
+#include "tensorflow/core/distributed_runtime/rpc/compression_helper.h"
 
 namespace tensorflow {
 
@@ -97,8 +98,12 @@ void GrpcMaybeUnparseProto(const string& src, grpc::ByteBuffer* dst) {
 }
 
 bool GrpcMaybeParseProto(const grpc::ByteBuffer& src, protobuf::Message* dst) {
+  ::grpc::ByteBuffer decompress_src(src);
+  Decompression(&decompress_src);
   GrpcByteBufferSource stream;
-  if (!stream.Init(src)) return false;
+  if(!stream.Init(decompress_src)) {
+    return false;
+  }
   return dst->ParseFromZeroCopyStream(&stream);
 }
 
@@ -116,8 +121,10 @@ bool GrpcMaybeParseProto(const ::grpc::ByteBuffer& src, TensorResponse* dst) {
       return &src;
     }
   };
+  ::grpc::ByteBuffer decompress_src(src);
+  Decompression(&decompress_src);
   ByteSource bs;
-  bs.buffer = &src;
+  bs.buffer = &decompress_src;
   return dst->ParseFrom(&bs).ok() && bs.ok;
 }
 
