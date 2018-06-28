@@ -1,0 +1,4 @@
+op {
+  graph_op_name: "BtIdTableOfTensorsV2"
+  visibility: HIDDEN
+}

@@ -370,4 +370,45 @@ REGISTER_OP("InitializeTableFromTextFileV2")
       return Status::OK();
     });
 
+REGISTER_OP("BtIdTable")
+    .Output("table_handle: Ref(string)")
+    .Attr("container: string = ''")
+    .Attr("shared_name: string = ''")
+    .Attr("use_node_name_sharing: bool = false")
+    .Attr("key_dtype: type")
+    .Attr("value_dtype: type")
+    .SetIsStateful()
+    .SetShapeFn(TwoElementOutput);
+
+REGISTER_OP("BtIdTableV2")
+    .Output("table_handle: resource")
+    .Attr("container: string = ''")
+    .Attr("shared_name: string = ''")
+    .Attr("use_node_name_sharing: bool = false")
+    .Attr("key_dtype: type")
+    .Attr("value_dtype: type")
+    .SetIsStateful()
+    .SetShapeFn(ScalarOutput);
+
+REGISTER_OP("BtIdTableOfTensors")
+    .Output("table_handle: Ref(string)")
+    .Attr("container: string = ''")
+    .Attr("shared_name: string = ''")
+    .Attr("use_node_name_sharing: bool = false")
+    .Attr("key_dtype: type")
+    .Attr("value_dtype: type")
+    .Attr("value_shape: shape = {}")
+    .SetIsStateful()
+    .SetShapeFn(TwoElementOutput);
+
+REGISTER_OP("BtIdTableOfTensorsV2")
+    .Output("table_handle: resource")
+    .Attr("container: string = ''")
+    .Attr("shared_name: string = ''")
+    .Attr("use_node_name_sharing: bool = false")
+    .Attr("key_dtype: type")
+    .Attr("value_dtype: type")
+    .Attr("value_shape: shape = {}")
+    .SetIsStateful()
+    .SetShapeFn(ScalarOutput);
 }  // namespace tensorflow

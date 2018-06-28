@@ -1591,6 +1591,7 @@ cc_library(
         ":fifo_queue_op",
         ":lookup_table_init_op",
         ":lookup_table_op",
+        ":btid_table_op",
         ":map_stage_op",
         ":padding_fifo_queue_op",
         ":priority_queue_op",
@@ -6249,4 +6250,11 @@ cc_header_only_library(
     deps = [
         ":cwise_lib",
     ],
+)
+
+tf_kernel_library(
+    name = "btid_table_op",
+    hdrs = ["lookup_table_op.h"],
+    srcs = ["btid_table_op.cc"],
+    deps = LOOKUP_DEPSK,
 )

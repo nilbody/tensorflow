@@ -74,6 +74,7 @@ py_library(
         "//tensorflow:__pkg__",
     ],
     deps = [
+        ":btid_table_ops",
         ":array_ops",
         ":bitwise_ops",
         ":boosted_trees_ops",
@@ -4992,4 +4993,24 @@ pyx_library(
     srcs = ["framework/fast_tensor_util.pyx"],
     py_deps = ["//tensorflow/python:util"],
     deps = ["//third_party/py/numpy:headers"],
+)
+
+py_library(
+    name = "btid_table_ops",
+    srcs = ["ops/btid_table_ops.py"],
+    py_deps = ["//tensorflow/python:util"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":array_ops",
+        ":constant_op",
+        ":control_flow_ops",
+        ":framework_for_generated_wrappers",
+        ":lookup_ops_gen",
+        ":math_ops",
+        ":sparse_tensor",
+        ":string_ops",
+        ":util",
+        "//tensorflow/python/eager:context",
+        "@six_archive//:six",
+    ],
 )
