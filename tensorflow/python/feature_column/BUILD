@@ -12,6 +12,7 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         ":feature_column",
+        ":bt_indicator_column",
         "//tensorflow/python:util",
     ],
 )
@@ -45,6 +46,19 @@ py_library(
         "//tensorflow/python:variables",
         "//tensorflow/python/keras",
         "@six_archive//:six",
+    ],
+)
+
+py_library(
+    name = "bt_indicator_column",
+    srcs = ["bt_indicator_column.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":feature_column",
+        "//tensorflow/python:array_ops",
+        "//tensorflow/python:math_ops",
+        "//tensorflow/python:parsing_ops",
+        "//tensorflow/python:tensor_shape",
     ],
 )
 
