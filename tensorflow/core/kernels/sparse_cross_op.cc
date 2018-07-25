@@ -34,6 +34,14 @@ limitations under the License.
 namespace tensorflow {
 
 namespace {
+struct DataCollector {
+  DataCollector()
+    : string_val(nullptr), int64_val(nullptr), float_val(nullptr) {}
+  const std::string *string_val;
+  const int64 *int64_val;
+  const float *float_val;
+};
+
 // An interface that represents a column with batches.
 template <typename InternalType>
 class ColumnInterface {
@@ -42,7 +50,7 @@ class ColumnInterface {
   virtual int64 FeatureCount(int64 batch) const = 0;
 
   // Returns the fingerprint of nth feature from the specified batch.
-  virtual InternalType Feature(int64 batch, int64 n) const = 0;
+  virtual void Feature(int64 batch, int64 n, DataCollector *dc) const = 0;
 
   virtual ~ColumnInterface() {}
 };
@@ -63,7 +71,7 @@ class SparseTensorColumn : public ColumnInterface<InternalType> {
     return feature_counts_[batch];
   }
 
-  InternalType Feature(int64 batch, int64 n) const override;
+  void Feature(int64 batch, int64 n, DataCollector *dc) const override;
 
   ~SparseTensorColumn() override {}
 
@@ -75,34 +83,38 @@ class SparseTensorColumn : public ColumnInterface<InternalType> {
 
 // InternalType is float use FloatCrosser.
 template <>
-float SparseTensorColumn<float>::Feature(int64 batch, int64 n) const {
+void SparseTensorColumn<float>::Feature(int64 batch, int64 n, DataCollector *dc) const {
   const int64 start = feature_start_indices_[batch];
-  return values_.vec<float>().data()[start + n];
+  dc->float_val = &values_.vec<float>().data()[start + n]; //float是传地址而无内存拷贝的, 这样做虽无优化性能但可统一接口
 }
 
 // InternalType is int64 only when using HashCrosser.
 template <>
-int64 SparseTensorColumn<int64>::Feature(int64 batch, int64 n) const {
+void SparseTensorColumn<int64>::Feature(int64 batch, int64 n, DataCollector *dc) const {
   const int64 start = feature_start_indices_[batch];
-  if (DT_STRING == values_.dtype())
-    return Fingerprint64(values_.vec<string>().data()[start + n]);
-  return values_.vec<int64>().data()[start + n];
+  if (DT_STRING == values_.dtype()) {
+    dc->string_val = &values_.vec<string>().data()[start + n];
+  } else {
+    dc->int64_val = &values_.vec<int64>().data()[start + n];
+  }
 }
 
 // InternalType is string or StringPiece when using StringCrosser.
 template <>
-string SparseTensorColumn<string>::Feature(int64 batch, int64 n) const {
+void SparseTensorColumn<string>::Feature(int64 batch, int64 n, DataCollector *dc) const {
   const int64 start = feature_start_indices_[batch];
-  if (DT_STRING == values_.dtype())
-    return values_.vec<string>().data()[start + n];
-  return std::to_string(values_.vec<int64>().data()[start + n]);
+  if (DT_STRING == values_.dtype()) {
+    dc->string_val = &values_.vec<string>().data()[start + n];
+  } else {
+    dc->int64_val = &values_.vec<int64>().data()[start + n]; //BTBT ?*? 这里原来是直接给到dc->int64_val,不会有问题么?不会,因在调用外层,即StringCrosser::Generate()方法中用sprintf代替了这里的tostring,sprintf的用法没有内存拷贝
+  }
 }
 
 template <>
-StringPiece SparseTensorColumn<StringPiece>::Feature(int64 batch,
-                                                     int64 n) const {
+void SparseTensorColumn<StringPiece>::Feature(int64 batch,
+                                                     int64 n, DataCollector *dc) const {
   const int64 start = feature_start_indices_[batch];
-  return values_.vec<string>().data()[start + n];
+  dc->string_val = &values_.vec<string>().data()[start + n];
 }
 
 // A column that is backed by a dense tensor.
@@ -113,7 +125,7 @@ class DenseTensorColumn : public ColumnInterface<InternalType> {
 
   int64 FeatureCount(int64 batch) const override { return tensor_.dim_size(1); }
 
-  InternalType Feature(int64 batch, int64 n) const override;
+  void Feature(int64 batch, int64 n, DataCollector *dc) const override;
 
   ~DenseTensorColumn() override {}
 
@@ -123,30 +135,35 @@ class DenseTensorColumn : public ColumnInterface<InternalType> {
 
 // InternalType is int64 only when using HashCrosser.
 template <>
-int64 DenseTensorColumn<int64>::Feature(int64 batch, int64 n) const {
-  if (DT_STRING == tensor_.dtype())
-    return Fingerprint64(tensor_.matrix<string>()(batch, n));
-  return tensor_.matrix<int64>()(batch, n);
+void DenseTensorColumn<int64>::Feature(int64 batch, int64 n, DataCollector *dc) const {
+  if (DT_STRING == tensor_.dtype()) {
+    dc->string_val = &tensor_.matrix<string>()(batch, n);
+  } else {
+    dc->int64_val = &tensor_.matrix<int64>()(batch, n);
+  }
 }
 
 // Internal type is string or StringPiece when using StringCrosser.
 template <>
-string DenseTensorColumn<string>::Feature(int64 batch, int64 n) const {
-  if (DT_STRING == tensor_.dtype()) return tensor_.matrix<string>()(batch, n);
-  return std::to_string(tensor_.matrix<int64>()(batch, n));
+void DenseTensorColumn<string>::Feature(int64 batch, int64 n, DataCollector *dc) const {
+  if (DT_STRING == tensor_.dtype()) {
+    dc->string_val = &tensor_.matrix<string>()(batch, n);
+  } else {
+    dc->int64_val = &values_.vec<int64>().data()[start + n];  //BTBT ?*? 这里不调用tostring不会有问题,因其调用方StringCrosser::Generate()用了sprintf. 但的确有点隐患,万一调用方变了呢?
+  }
 }
 
 template <>
-StringPiece DenseTensorColumn<StringPiece>::Feature(int64 batch,
+void DenseTensorColumn<StringPiece>::Feature(int64 batch,
                                                     int64 n) const {
-  return tensor_.matrix<string>()(batch, n);
+  dc->string_val = &tensor_.matrix<string>()(batch, n);
 }
 
 //Internla type is float use FloatCrosser
 template <>
-float DenseTensorColumn<float>::Feature(int64 batch,
-                                                    int64 n) const {
-  return tensor_.matrix<float>()(batch, n);
+void DenseTensorColumn<float>::Feature(int64 batch,
+                                                    int64 n, DataCollector *dc) const {
+  dc->float_val = &tensor_.matrix<float>()(batch, n);
 }
 
 
@@ -190,14 +207,41 @@ class StringCrosser {
   string Generate(const int64 batch_index,
                   const std::vector<int>& permutation) const {
     static const auto k_feature_separator = "_X_";
-
-    gtl::InlinedVector<InternalType, 6> cross_vec(columns_.size());
+    int size = 0;
     for (int i = 0; i < permutation.size(); i++) {
-      cross_vec[i] = columns_[i]->Feature(batch_index, permutation[i]);
+      DataCollector dc;  //BTBT ?*? 这里岂不是每次都创建新的?不会,编译器会将其拿到for外面并用指针代替的,测过即使人工把它拿出去,性能也差不到. 但其实还是人工拿出去好,编译器毕竟自己无法掌控.
+      columns_[i]->Feature(batch_index, permutation[i], &dc);
+      if(dc.string_val) {
+        size += dc.string_val->size();
+      } else if (dc.int64_val) {
+        size += 20; // max length of int64
+      }
     }
-    // TODO(zakaria): this will copy the string twice, might effect
-    // performance.
-    return str_util::Join(cross_vec, k_feature_separator);
+    size += strlen(k_feature_separator) * (permutation.size() - 1);
+    std::string result;
+    result.reserve(size);
+    for(int i = 0; i < permutation.size(); i++) {
+      DataCollector dc;
+      columns_[i]->Feature(batch_index, permutation[i], &dc);
+      if(dc.string_val) {
+        if(result.empty()) {
+          result.append(*dc.string_val);
+        } else {
+          result.append(k_feature_separator).append(*dc.string_val);
+        }
+      } else if (dc.int64_val) {
+        int len = 0;
+        char buffer[32];
+        len = sprintf(buffer, "%lld", *dc.int64_val);
+        if(result.empty()) {
+          result.append(buffer, len);
+        } else {
+          result.append(k_feature_separator).append(buffer,len);
+          result.append(buffer, len);
+        }
+      }
+    }
+    return result;
   }
 
  private:
@@ -217,8 +261,15 @@ class HashCrosser {
     // Do the fingerprint concatenation on uint64.
     uint64 hashed_output = hash_key_;
     for (size_t i = 0; i < permutation.size(); ++i) {
-      uint64 hash_i = columns_[i]->Feature(batch_index, permutation[i]);
-      hashed_output = FingerprintCat64(hashed_output, hash_i);
+      DataCollector dc;
+      columns_[i]->Feature(batch_index, permutation[i], &dc);
+      if(dc.int64_val) {
+        uint64_t hash_i = *dc.int64_val;
+        hashed_output = FingerprintCat64(hashed_output, hash_i);
+      } else {
+        uint64_t hash_i = Fingerprint64(*dc.string_val);
+        hashed_output = FingerprintCat64(hashed_output, hash_i);
+      }
     }
     // The return value is int64 based on the number of buckets.
     if (num_buckets_ > 0) {
@@ -250,7 +301,9 @@ class FloatCrosser {
                     const std::vector<int>& permutation) const {
         float result = 1.0;
         for(int i = 0; i < permutation.size(); i++) {
-          result *= columns_[i]->Feature(batch_index, permutation[i]);
+          DataCollector dc;
+          columns_[i]->Feature(batch_index, permutation[i], &dc);
+          result *= *dc.float_val;
         }
         return result;
       }
@@ -277,6 +330,30 @@ class ProductIterator {
         has_next_ = false;
         break;
       }
+    }
+  }
+
+  template<typename Crosser, typename Update>
+  void Process(Crosser &crosser, Updater &updater) {
+    int64 cross_count = 0;
+    while (has_next_) {
+      updater.Update(batch_index_, cross_count,
+                    crosser.Generate(batch_index_, next_permutation_));
+      cross_count++;
+
+      bool carry = true;
+      for(int i = next_permutation_.size() - 1; i >= 0; i--) {
+        if(carry) {
+          next_permutation_[i] = next_permutation_[i] + 1;
+        }
+        if(next_permutation_[i] == columns_[i]->FeatureCount(batch_index_)) {
+          next_permutation_[i] = 0;
+        } else {
+          carry = false;
+          break;
+        }
+      }
+      has_next_ = !carry;
     }
   }
 
@@ -357,7 +434,6 @@ class SparseCrossOp : public OpKernel {
 
     ValidateInput(context, indices_list_in, values_list_in, shapes_list_in,
                   dense_list_in);
-
     std::vector<std::unique_ptr<ColumnInterface<InternalType>>> columns =
         GenerateColumnsFromInput(indices_list_in, values_list_in,
                                  shapes_list_in, dense_list_in);
@@ -377,12 +453,7 @@ class SparseCrossOp : public OpKernel {
     auto do_work = [&columns, crosser, updater](int64 begin, int64 end) {
       for (int b = begin; b < end; b++) {
         ProductIterator<InternalType> product_iterator(columns, b);
-        int64 cross_count = 0;
-        while (product_iterator.HasNext()) {
-          const auto permutation = product_iterator.Next();
-          updater.Update(b, cross_count, crosser.Generate(b, permutation));
-          cross_count++;
-        }
+        product_iterator.Process(crosser, updater);//BTBT 这样做是为了减少vector的内存拷贝
       }
     };
 
