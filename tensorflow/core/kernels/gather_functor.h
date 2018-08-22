@@ -88,12 +88,29 @@ SliceIndex HandleCopies(OpKernelContext* ctx,
       // ahead-of-time compilation binary size).
       if (is_simple_type<T>::value) {
         // Avoid auto-promotion to Index from SliceIndex by casting.
-        memcpy(
+        if(slice_bytes == 4) {
+          *reinterpret_cast<int32_t*>(out_base + (batch_idx * indices_size + indices_idx) * slice_elems) = // NOLINT
+            *reinterpret_cast<const int32_t*>(
+              params_base + (batch_idx * static_cast<SliceIndex>(limit) +
+                             static_cast<SliceIndex>(index)) * slice_elems);
+        } else if(slice_bytes == 8) {
+          *reinterpret_cast<int64_t*>(out_base + (batch_idx * indices_size + indices_idx) * slice_elems) = // NOLINT
+            *reinterpret_cast<const int64_t*>(
+              params_base + (batch_idx * static_cast<SliceIndex>(limit) +
+                             static_cast<SliceIndex>(index)) * slice_elems);
+        } else if(slice_bytes == 16) {
+          *reinterpret_cast<long double*>(out_base + (batch_idx * indices_size + indices_idx) * slice_elems) = // NOLINT
+            *reinterpret_cast<const long double*>(
+              params_base + (batch_idx * static_cast<SliceIndex>(limit) +
+                             static_cast<SliceIndex>(index)) * slice_elems);
+        } else {
+          memcpy(
             out_base + (batch_idx * indices_size + indices_idx) * slice_elems,
             params_base + (batch_idx * static_cast<SliceIndex>(limit) +
                            static_cast<SliceIndex>(index)) *
                               slice_elems,
             slice_bytes);
+        }
       } else {
         // For non-"simple" types (e.g. strings).
         out.template chip<1>(indices_idx) = params.template chip<1>(index);

@@ -609,20 +609,6 @@ bool Tensor::IsInitialized() const {
          shape_.num_elements() == 0;
 }
 
-void Tensor::CheckType(DataType expected_dtype) const {
-  CHECK_EQ(dtype(), expected_dtype);
-}
-
-void Tensor::CheckTypeAndIsAligned(DataType expected_dtype) const {
-  CHECK_EQ(dtype(), expected_dtype);
-  CHECK(IsAligned()) << "CheckTypeAndIsAligned";
-}
-
-void Tensor::CheckIsAlignedAndSingleElement() const {
-  CHECK(IsAligned()) << "Aligned and single element";
-  CHECK_EQ(1, NumElements()) << "Must have a one element tensor";
-}
-
 Tensor::~Tensor() { UnrefIfNonNull(buf_); }
 
 void Tensor::CopyFromInternal(const Tensor& other, const TensorShape& shape) {

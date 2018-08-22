@@ -442,6 +442,7 @@ class OpOutputList {
   DataType expected_output_dtype(int i) const;
   Status allocate(int i, const TensorShape& shape, Tensor** output);
   void set(int i, const Tensor& tensor);
+  void set(int i, Tensor&& tensor); //BTBT 使用&&move语义,提升性能,const无法使用move语义
   void set_ref(int i, mutex* mu, Tensor* tensor_for_ref);
   int size() const { return stop_ - start_; }
   Iterator begin() const { return Iterator(this, 0); }
@@ -1073,6 +1074,7 @@ class OpKernelContext {
   // to capture error conditions, and are strongly preferred.
   Tensor* mutable_output(int index);
   void set_output(int index, const Tensor& tensor);
+  void set_output(int index, Tensor&& tensor);
   mutex* input_ref_mutex(int index);
   void set_output_ref(int index, mutex* mu, Tensor* tensor_for_ref);
   TensorValue release_output(int index);
@@ -1510,6 +1512,12 @@ inline Status OpOutputList::allocate(int i, const TensorShape& shape,
 }
 
 inline void OpOutputList::set(int i, const Tensor& tensor) {
+  DCHECK_GE(i, 0);
+  DCHECK_LT(i, stop_ - start_);
+  ctx_->set_output(start_ + i, tensor);
+}
+
+inline void OpOutputList::set(int i, Tensor&& tensor) {//使用&&move语义提升性能,const无法使用move语义
   DCHECK_GE(i, 0);
   DCHECK_LT(i, stop_ - start_);
   ctx_->set_output(start_ + i, tensor);

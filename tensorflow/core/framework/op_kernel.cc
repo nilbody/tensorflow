@@ -787,6 +787,33 @@ void OpKernelContext::set_output(int index, const Tensor& tensor) {
   }
 }
 
+void OpKernelContext::set_output(int index, Tensor&& tensor) {
+  DCHECK_GE(index, 0);
+  DCHECK_LT(index, outputs_.size());
+  DCHECK(!IsRefType(params_->op_kernel->output_type(index)));
+  DCHECK_EQ(mutable_output(index), nullptr);
+  //record_tensor_reference(tensor);  //BTBT ??? 不用这个方法会不会有什么问题?record_tensor_reference是用于将tensor引用数+1,move语义下没必要+1,真的么?record_tensor_reference会不会被其它调用,会不会有其它作用?
+  auto *new_tensor = new Tensor(tensor);
+  outputs_[index] = TensorValue(new_tensor);
+  if (track_allocations() && tensor.TotalBytes() > 0) {
+    mutex_lock l(stats_mu_);
+    if (!temp_tensor_buffer_and_size_) {
+      return;
+    }
+    auto it = std::find_if(temp_tensor_buffer_and_size_->begin(),
+                           temp_tensor_buffer_and_size_->end(),
+                           [&new_tensor](const std::pair<const void*, int64>& e) {
+                             return e.first == static_cast<const void*>(
+                                                   new_tensor.tensor_data().data());
+                           });
+    if (it != temp_tensor_buffer_and_size_->end()) {
+      temp_memory_allocated_ -= it->second;
+      temp_tensor_buffer_and_size_->erase(it);
+    }
+  }
+}
+
+
 void OpKernelContext::set_output_ref(int index, mutex* mu,
                                      Tensor* tensor_for_ref) {
   DCHECK_GE(index, 0);

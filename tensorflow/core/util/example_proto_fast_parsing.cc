@@ -458,7 +458,8 @@ class LimitedArraySlice {
   // already been filled, this method has no effect on the underlying data, but
   // it changes the number returned by EndDistance into negative values.
   void push_back(T&& value) {
-    if (EndDistance() > 0) *current_ = std::move(value);
+    if (EndDistance() > 0) *current_ = std::move( 
+            const_cast<typename std::remove_const<T>::type&>(value));
     ++current_;
   }
 
@@ -816,7 +817,10 @@ void CopyOrMoveBlock(const T* b, const T* e, T* t) {
 }
 template <>
 void CopyOrMoveBlock(const string* b, const string* e, string* t) {
-  std::move(b, e, t);
+  for(auto it = b; it != e; ++it) { //BTBT ??? b和e不一定是连续的内存地址啊,它们中间有可能插着其它?
+    t->swap(*const_cast<string*>(it));
+    ++t;
+  }
 }
 
 template <typename T>
@@ -978,7 +982,8 @@ Status FastParseExample(const Config& config,
   }
 
   for (size_t d = 0; d < config.dense.size(); ++d) {
-    result->dense_values.push_back(std::move(fixed_dense_values[d]));
+    result->dense_values.push_back(
+        std::move(const_cast<Tensor&>(fixed_dense_values[d])));
   }
 
   // Merge SparseBuffers from all minibatches for every config.sparse.
@@ -1047,8 +1052,10 @@ Status FastParseExample(const Config& config,
           break;
         }
         case DT_STRING: {
-          std::move(buffer.bytes_list.begin(), buffer.bytes_list.end(),
-                    values->flat<string>().data() + offset);
+          for(int ix = 0; ix < buffer.bytes_list.size(); ix++) {
+            (values->flat<string>().data() + offset + ix)->swap(
+                const_cast<string&>(buffer.bytes_list[ix]));
+          }
           break;
         }
         default:

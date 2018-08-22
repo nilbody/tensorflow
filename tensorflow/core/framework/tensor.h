@@ -119,24 +119,24 @@ class Tensor {
   ~Tensor();
 
   /// Returns the data type.
-  DataType dtype() const { return shape_.data_type(); }
+  inline DataType dtype() const { return shape_.data_type(); }
 
   /// Returns the shape of the tensor.
-  const TensorShape& shape() const { return shape_; }
+  inline const TensorShape& shape() const { return shape_; }
 
   /// \brief Convenience accessor for the tensor shape.
   ///
   /// For all shape accessors, see comments for relevant methods of
   /// `TensorShape` in `tensor_shape.h`.
-  int dims() const { return shape().dims(); }
+  inline int dims() const { return shape().dims(); }
 
   /// Convenience accessor for the tensor shape.
-  int64 dim_size(int d) const { return shape().dim_size(d); }
+  inline int64 dim_size(int d) const { return shape().dim_size(d); }
 
   /// Convenience accessor for the tensor shape.
-  int64 NumElements() const { return shape().num_elements(); }
+  inline int64 NumElements() const { return shape().num_elements(); }
 
-  bool IsSameSize(const Tensor& b) const {
+  inline bool IsSameSize(const Tensor& b) const {
     return shape().IsSameSize(b.shape());
   }
 
@@ -156,7 +156,7 @@ class Tensor {
   size_t AllocatedBytes() const;
 
   /// Returns true iff this tensor is aligned.
-  bool IsAligned() const {
+  inline bool IsAligned() const {
 #if EIGEN_MAX_ALIGN_BYTES == 0
     return true;
 #else
@@ -461,10 +461,22 @@ class Tensor {
   // Returns true if the refcount on buf_ and any possible underlying root
   // buffer is one.
   bool RefCountIsOne() const;
-  void CheckType(DataType expected_dtype) const;
-  void CheckTypeAndIsAligned(DataType expected_dtype) const;
-  void CheckIsAlignedAndSingleElement() const;
-  void set_dtype(DataType t) { shape_.set_data_type(t); }
+
+  inline void Tensor::CheckType(DataType expected_dtype) const {
+    CHECK_EQ(dtype(), expected_dtype);
+  }
+
+  inline void Tensor::CheckTypeAndIsAligned(DataType expected_dtype) const {
+    CHECK_EQ(dtype(), expected_dtype);
+    CHECK(IsAligned()) << "CheckTypeAndIsAligned";
+  }
+
+  inline void Tensor::CheckIsAlignedAndSingleElement() const {
+    CHECK(IsAligned()) << "Aligned and single element";
+    CHECK_EQ(1, NumElements()) << "Must have a one element tensor";
+  }
+
+  inline void set_dtype(DataType t) { shape_.set_data_type(t); }
 
   // TensorShape's InlineVector.
   static gtl::InlinedVector<int64, 4> ComputeFlatInnerDims(
