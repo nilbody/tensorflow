@@ -534,7 +534,7 @@ cc_library(
 
 cc_library(
     name = "lz4",
-    src = ["lz4frame.c",
+    srcs = ["lz4frame.c",
             "lz4.c",
             "xxhash.c",
     ],

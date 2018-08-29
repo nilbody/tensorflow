@@ -6256,5 +6256,5 @@ tf_kernel_library(
     name = "btid_table_op",
     hdrs = ["lookup_table_op.h"],
     srcs = ["btid_table_op.cc"],
-    deps = LOOKUP_DEPSK,
+    deps = LOOKUP_DEPS,
 )

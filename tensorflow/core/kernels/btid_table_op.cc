@@ -312,4 +312,6 @@ REGISTER_KERNEL(int64, int64);
 
 #undef REGISTER_KERNEL
 
+}  // namespace lookup
+
 }  // namespace tensorflow

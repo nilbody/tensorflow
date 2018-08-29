@@ -462,16 +462,16 @@ class Tensor {
   // buffer is one.
   bool RefCountIsOne() const;
 
-  inline void Tensor::CheckType(DataType expected_dtype) const {
+  inline void CheckType(DataType expected_dtype) const {
     CHECK_EQ(dtype(), expected_dtype);
   }
 
-  inline void Tensor::CheckTypeAndIsAligned(DataType expected_dtype) const {
+  inline void CheckTypeAndIsAligned(DataType expected_dtype) const {
     CHECK_EQ(dtype(), expected_dtype);
     CHECK(IsAligned()) << "CheckTypeAndIsAligned";
   }
 
-  inline void Tensor::CheckIsAlignedAndSingleElement() const {
+  inline void CheckIsAlignedAndSingleElement() const {
     CHECK(IsAligned()) << "Aligned and single element";
     CHECK_EQ(1, NumElements()) << "Must have a one element tensor";
   }

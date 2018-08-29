@@ -804,7 +804,7 @@ void OpKernelContext::set_output(int index, Tensor&& tensor) {
                            temp_tensor_buffer_and_size_->end(),
                            [&new_tensor](const std::pair<const void*, int64>& e) {
                              return e.first == static_cast<const void*>(
-                                                   new_tensor.tensor_data().data());
+                                                   new_tensor->tensor_data().data());
                            });
     if (it != temp_tensor_buffer_and_size_->end()) {
       temp_memory_allocated_ -= it->second;

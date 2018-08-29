@@ -149,13 +149,13 @@ void DenseTensorColumn<string>::Feature(int64 batch, int64 n, DataCollector *dc)
   if (DT_STRING == tensor_.dtype()) {
     dc->string_val = &tensor_.matrix<string>()(batch, n);
   } else {
-    dc->int64_val = &values_.vec<int64>().data()[start + n];  //BTBT ?*? 这里不调用tostring不会有问题,因其调用方StringCrosser::Generate()用了sprintf. 但的确有点隐患,万一调用方变了呢?
+    dc->int64_val = &tensor_.matrix<int64>()(batch, n);  //BTBT ?*? 这里不调用tostring不会有问题,因其调用方StringCrosser::Generate()用了sprintf. 但的确有点隐患,万一调用方变了呢?
   }
 }
 
 template <>
 void DenseTensorColumn<StringPiece>::Feature(int64 batch,
-                                                    int64 n) const {
+                                                    int64 n, DataCollector *dc) const {
   dc->string_val = &tensor_.matrix<string>()(batch, n);
 }
 
@@ -333,7 +333,7 @@ class ProductIterator {
     }
   }
 
-  template<typename Crosser, typename Update>
+  template<typename Crosser, typename Updater>
   void Process(Crosser &crosser, Updater &updater) {
     int64 cross_count = 0;
     while (has_next_) {

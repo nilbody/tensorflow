@@ -63,7 +63,8 @@ public:
     }
 
 private:
-    BufferPool(uint64_t capacity = 8 * 1024 * 1024 * 1024 1024UL)
+
+    BufferPool(uint64_t capacity = 8 * 1024 * 1024 * 1024UL)
         : capacity_(capacity), current_capacity_(0) {
         }
     
@@ -72,6 +73,7 @@ private:
             delete [] item.first;
         }
     }
+
 private:
     std::mutex mutex_;
     std::map<char*, int32_t> info_;
@@ -84,6 +86,8 @@ void Destroy(void *ptr) {
     BufferPool::Instance()->Deallocate(ptr); //BTBT MAYBUG: 这样貌似达不到单例模式吧
 }
 
+
+
 void Compression(grpc::ByteBuffer *data) {
     static auto f = [](bool v) {
         std::cout << "TF_COMPRESSION : " << v << std::endl; //BTBT REFACTOR: 加上个人域
@@ -95,7 +99,7 @@ void Compression(grpc::ByteBuffer *data) {
         static std::atomic<u_int64_t> after_compress_size{0};
         static std::atomic<u_int64_t> cnt{0};
         static std::atomic<u_int64_t> uncompress_size{0};
-        int32_t data_len = data->length():
+        int32_t data_len = data->Length();
         if(data_len < kMinDataSize || data_len > kMaxDataSize) {
             uncompress_size += data_len; //BTBT MAYBUG: why add? just for log? but it will become larger and larger.
             return;
@@ -106,7 +110,7 @@ void Compression(grpc::ByteBuffer *data) {
         data->Dump(&slices);
         int32_t len = 0;
         for(const auto &slice: slices) {
-            memcpy(input + len, slice.begin, slice.size());
+            memcpy(input + len, slice.begin(), slice.size());
             len += slice.size();
         }
 
@@ -114,13 +118,13 @@ void Compression(grpc::ByteBuffer *data) {
                                             len, data_len + sizeof(kLz4Magic));
         uint64_t count = ++cnt;
         if(dst_len > 0 && dst_len < len) {
-            for(uint32_t ix = 0; ix < sizseof(kLz4Magic); ix++) {
+            for(uint32_t ix = 0; ix < sizeof(kLz4Magic); ix++) {
                 output[ix] = kLz4Magic[ix];
             }
-            grpc::Slice slice(output, dst_len + sizseof(kLz4Magic), Destroy);
+            grpc::Slice slice(output, dst_len + sizeof(kLz4Magic), Destroy);
             grpc::ByteBuffer result(&slice, 1);
             data->Swap(&result);
-            before_compress_sizse += len;
+            before_compress_size += len;
             after_compress_size += dst_len;
         } else {
             Destroy(output);
@@ -138,7 +142,7 @@ void Compression(grpc::ByteBuffer *data) {
 void Decompression(grpc::ByteBuffer *data) {
     static bool use_compression = getenv("TF_COMPRESSION") ? true : false;
     if(use_compression) {
-        int32_t data_len = data->length();
+        int32_t data_len = data->Length();
         if(data_len < sizeof(kLz4Magic)) {
             return;
         }

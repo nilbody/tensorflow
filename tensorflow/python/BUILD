@@ -4998,7 +4998,6 @@ pyx_library(
 py_library(
     name = "btid_table_ops",
     srcs = ["ops/btid_table_ops.py"],
-    py_deps = ["//tensorflow/python:util"],
     srcs_version = "PY2AND3",
     deps = [
         ":array_ops",
